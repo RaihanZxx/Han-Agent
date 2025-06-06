@@ -1,0 +1,14 @@
+----- Panduan Khusus: Android APK Build -----
+Ketika diminta untuk membangun aplikasi Android, saya harus mengikuti langkah-langkah umum berikut:
+1.  **Struktur Proyek:** Pastikan proyek Android memiliki struktur yang benar (misal: `app/src/main/java`, `app/src/main/res`). Jika tidak ada, buat struktur dasar.
+2.  **AndroidManifest.xml:** Pastikan file `AndroidManifest.xml` ada dan dikonfigurasi dengan benar.
+3.  **Kompilasi Sumber Daya:** Gunakan `aapt2` (atau `aapt` jika `aapt2` tidak tersedia) untuk mengompilasi sumber daya Android menjadi `resources.ap_`. Contoh: `aapt2 compile --dir app/src/main/res -o app/build/resources.ap_`.
+4.  **Link Sumber Daya:** Gunakan `aapt2 link` untuk menggabungkan `resources.ap_` dengan `AndroidManifest.xml` dan menghasilkan R-file. Contoh: `aapt2 link --proto-path app/src/main/AndroidManifest.xml -I $ANDROID_HOME/platforms/android-XX/android.jar --manifest app/src/main/AndroidManifest.xml -o app/build/base.apk --auto-add-overlay`. (Perhatikan bahwa AI harus menemukan path $ANDROID_HOME/platforms/android-XX/android.jar, bisa dengan `ls` atau `find`).
+5.  **Kompilasi Kode Java/Kotlin:** Gunakan `javac` untuk mengompilasi file `.java` ke `.class`. Contoh: `javac -source 1.8 -target 1.8 -bootclasspath $ANDROID_HOME/platforms/android-XX/android.jar -d app/build/classes app/src/main/java/**/*.java`.
+6.  **Konversi ke DEX:** Gunakan `d8` (atau `dx`) untuk mengonversi file `.class` dan library `.jar` menjadi file `.dex`. Contoh: `d8 app/build/classes --output app/build/dex --lib $ANDROID_HOME/platforms/android-XX/android.jar`.
+7.  **Paketkan APK:** Gabungkan `.dex` file, sumber daya, dan aset menjadi satu file `.apk`. Contoh: `zip -r app/build/app-unsigned.apk app/build/base.apk app/build/dex/classes.dex`. (Mungkin perlu menambahkan direktori `lib`, `assets` secara manual jika ada).
+8.  **Buat Keystore (jika belum ada):** Gunakan `keytool` untuk membuat keystore baru untuk penandatanganan aplikasi. Contoh: `keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000`.
+9.  **Tanda Tangani APK:** Gunakan `apksigner` untuk menandatangani APK. Contoh: `apksigner sign --ks debug.keystore --ks-key-alias androiddebugkey --min-sdk-version 21 app/build/app-unsigned.apk`.
+10. **Optimalkan APK (Zipalign):** Gunakan `zipalign` untuk mengoptimalkan APK agar performanya lebih baik di perangkat. Contoh: `zipalign -p 4 app/build/app-unsigned.apk app/build/app-aligned.apk`.
+11. **Gradle/Maven:** Jika proyek menggunakan Gradle atau Maven, prioritas pertama adalah mencoba `execute_command('gradle', ['build', 'assembleDebug'])` atau `execute_command('mvn', ['package'])`. Hanya jika ini gagal atau tidak berlaku, baru kembali ke langkah manual di atas.
+12. **Debugging:** Perhatikan output dari setiap perintah dan debug secara iteratif jika ada kesalahan.

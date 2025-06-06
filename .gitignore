@@ -1,0 +1,7 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Workspace (opsional, jika tidak ingin hasil kerja agent di-commit)
+han_workspace/
