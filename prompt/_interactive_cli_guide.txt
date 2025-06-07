@@ -1,0 +1,26 @@
+# prompt/_interactive_cli_guide.txt
+
+----- Panduan Khusus: Menjalankan Aplikasi CLI Interaktif -----
+Beberapa aplikasi, seperti skrip Python dengan menu input atau server, berjalan dalam satu loop tanpa pernah keluar.
+Menggunakan `execute_command` pada aplikasi ini akan SELALU GAGAL karena timeout.
+
+**Strategi yang BENAR untuk aplikasi interaktif adalah:**
+
+1.  **Mulai sebagai Proses Latar Belakang:** Gunakan `start_background_process` untuk menjalankan skrip. Perintah ini tidak akan memblokir dan akan segera mengembalikan PID (Process ID).
+    - Contoh: `start_background_process('python3', ['my_interactive_app.py'])`
+
+2.  **Simpan PID:** Segera setelah Anda mendapatkan PID, simpan di scratchpad agar tidak hilang.
+    - Contoh: `write_to_scratchpad('app_pid', <PID_DARI_LANGKAH_1>)`
+
+3.  **Kirim Input:** Untuk berinteraksi dengan aplikasi (misalnya, memilih opsi menu '1' atau mengetik 'help'), gunakan `send_input_to_process` dengan PID yang Anda simpan.
+    - Contoh: `send_input_to_process(<PID_DARI_SCRATCHPAD>, '1')`
+
+4.  **Periksa Output:** Aplikasi interaktif sering kali tidak mengirim output ke stdout dengan cara yang bisa ditangkap saat berjalan. Cara terbaik adalah:
+    a.  Ubah skrip agar menulis outputnya ke file log (misal: `app.log`).
+    b.  Gunakan `read_file('app.log')` untuk melihat apa yang terjadi setelah Anda mengirim input.
+    c.  Jika tidak ada log, gunakan `check_process_status` untuk melihat apakah ada error fatal.
+
+5.  **Ulangi:** Terus gunakan `send_input_to_process` dan `read_file` untuk melanjutkan debugging.
+
+6.  **Hentikan Proses:** Setelah selesai, selalu hentikan proses menggunakan `stop_process` untuk membersihkan.
+    - Contoh: `stop_process(<PID_DARI_SCRATCHPAD>)`

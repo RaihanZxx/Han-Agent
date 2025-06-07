@@ -1,3 +1,6 @@
 google-generativeai
 python-dotenv
 google-ai-generativelanguage
+requests
+beautifulsoup4
+duckduckgo-search

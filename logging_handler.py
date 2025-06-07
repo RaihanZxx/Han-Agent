@@ -2,6 +2,7 @@ from utils.colors import Colors
 import json
 import textwrap
 import shlex
+from config import SHOW_DEBUG_MESSAGES
 
 MAX_TOOL_ARG_LENGTH = 200
 MAX_TOOL_OUTPUT_LENGTH = 1000
@@ -23,9 +24,8 @@ def log_user_input(text):
     print(f"{Colors.BOLD}{Colors.YELLOW}Anda: {Colors.RESET}{text}")
 
 def log_agent_thought(text):
-    print(f"{Colors.BLUE}{Colors.BOLD}Han Agent (Memikirkan): {Colors.RESET}")
+    print(f"\n{Colors.BLUE}{Colors.BOLD}Han Agent (Memikirkan): {Colors.RESET}")
     print(textwrap.indent(text, prefix="    "))
-    print()
 
 def log_agent_response(text):
     print(f"{Colors.BOLD}{Colors.BLUE}Han Agent: {Colors.RESET}{text}")
@@ -41,9 +41,16 @@ def log_success(message):
     print(f"{Colors.GREEN}[SUCCESS]: {message}{Colors.RESET}")
 
 def log_debug(message):
-    print(f"{Colors.MAGENTA}[DEBUG]: {message}{Colors.RESET}")
+    if SHOW_DEBUG_MESSAGES:
+        print(f"{Colors.MAGENTA}[DEBUG]: {message}{Colors.RESET}")
 
 def log_tool_call(function_name, args):
+    if function_name == 'ask_user_for_input':
+        question = args.get('question', '...')
+        print(f"\n{Colors.YELLOW}🤔 {Colors.BOLD}Meminta Input Pengguna:{Colors.RESET}")
+        print(f"    {question}")
+        return
+
     print(f"\n{Colors.MAGENTA}🧰 {Colors.BOLD}Memanggil Tool:{Colors.RESET} {Colors.MAGENTA}{function_name}{Colors.RESET}")
     if args:
         for key, value in args.items():
@@ -58,7 +65,7 @@ def log_tool_call(function_name, args):
                         preview_content += f"\n... (total {len(lines)} baris)"
                     print(f"    📝 {key}:\n{textwrap.indent(preview_content, prefix='        ')}")
             elif key == "args" and isinstance(value, list):
-                print(f"    ⚙️ {key}: {shlex_join(value)}")
+                print(f"    ⚙️ {key}: {shlex.join(value)}")
             elif isinstance(value, str) and len(value) > MAX_TOOL_ARG_LENGTH:
                 print(f"    🏷️ {key}: {_truncate_string(value, MAX_TOOL_ARG_LENGTH)}")
             else:
@@ -67,9 +74,32 @@ def log_tool_call(function_name, args):
         print("    (Tanpa argumen)")
 
 def log_tool_output(function_name, output_result):
-    print(f"{Colors.GREEN}└─ Hasil {function_name}: {Colors.RESET}")
-    formatted_output = _truncate_lines(str(output_result), MAX_LINES_FOR_TRUNCATION)
+    if function_name == 'ask_user_for_input':
+        print("-" * 30 + Colors.RESET)
+        return
+        
+    if isinstance(output_result, dict) and "success" in output_result and "data" in output_result:
+        success = output_result["success"]
+        data = output_result["data"]
+        
+        if success:
+            print(f"{Colors.GREEN}└─ Hasil Sukses dari {function_name}: {Colors.RESET}")
+        else:
+            print(f"{Colors.RED}└─ Hasil Gagal dari {function_name}: {Colors.RESET}")
+        
+        if isinstance(data, dict):
+            display_data = json.dumps(data, indent=2, ensure_ascii=False)
+        elif isinstance(data, list):
+            display_data = "\n".join(f"- {item}" for item in data) if data else "(Daftar kosong)"
+        else:
+            display_data = str(data)
+    else:
+        print(f"{Colors.YELLOW}└─ Hasil {function_name} (Format tidak standar): {Colors.RESET}")
+        display_data = str(output_result)
+
+    formatted_output = _truncate_lines(display_data, MAX_LINES_FOR_TRUNCATION)
     formatted_output = _truncate_string(formatted_output, MAX_TOOL_OUTPUT_LENGTH)
+    
     print(textwrap.indent(formatted_output, prefix="    "))
     print("-" * 30 + Colors.RESET)
     

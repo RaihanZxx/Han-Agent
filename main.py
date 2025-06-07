@@ -15,7 +15,6 @@ def main():
     else:
         log_system_message("Workspace tidak dibersihkan, melanjutkan sesi sebelumnya.")
 
-    agent = Agent()
     log_system_message(f"\n")
     log_system_message(f"{Colors.BLUE}{'-' * 50}{Colors.RESET}")
     log_system_message(f"{Colors.BOLD}{Colors.BLUE}Selamat datang di HanAgent v1.0 (Expert Mode)!{Colors.RESET}")
@@ -24,6 +23,8 @@ def main():
     log_system_message(f"{Colors.BLUE}Ketik '{Colors.BOLD}exit{Colors.RESET}{Colors.BLUE}' untuk keluar.{Colors.RESET}")
     log_system_message(f"{Colors.BLUE}{'-' * 50}{Colors.RESET}\n")
 
+    # Inisialisasi Agent hanya sekali di luar loop
+    agent = Agent()
     log_system_message(f"Han Agent siap menerima perintah Anda.")
 
     while True:
