@@ -1,4 +1,3 @@
------ Panduan Khusus: Penggunaan Tool CLI -----
 Saya harus memanfaatkan `execute_command` secara cerdas.
 - Untuk menjelajahi file, gunakan `ls -laR` (rekursif) atau `ls -la` (saat ini).
 - Untuk melihat isi file, gunakan `cat <nama_file>`.

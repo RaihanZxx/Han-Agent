@@ -5,12 +5,12 @@ import time
 import os
 import json
 
-from config import GEMINI_MODEL_NAME, TOOL_CALL_PAUSE_SECONDS, PROMPT_DIRECTORY, SHOW_AGENT_THOUGHTS, SHOW_DEBUG_MESSAGES
+from config import GEMINI_MODEL_NAME, TOOL_CALL_PAUSE_SECONDS, PROMPT_DIRECTORY, SHOW_AGENT_THOUGHTS, SHOW_DEBUG_MESSAGES, DIREKTORI_BATASAN_AI
 from logging_handler import log_agent_thought, log_agent_response, log_tool_call, log_tool_output, log_error, log_system_message, log_debug, log_success, log_user_input
 from utils.colors import Colors
 from tools.file_system_tools import file_system_tool_definitions, file_system_functions
 from tools.execution_tools import execution_tool_definitions, execution_functions
-from tools.control_tools import control_tool_definitions, control_functions, USER_INPUT_REQUIRED, USER_RESPONSE
+from tools.control_tools import control_tool_definitions, control_functions, USER_INPUT_REQUIRED
 from tools.internet_tools import internet_tool_definitions, internet_functions
 from tools.advanced_tools import advanced_tool_definitions, advanced_functions
 
@@ -20,7 +20,10 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 class Agent:
     def __init__(self):
+        # MENYUNTIKKAN PATH WORKSPACE LANGSUNG KE SYSTEM INSTRUCTION
         self.system_instruction = self._load_system_instruction_from_files()
+        self.system_instruction += f"\n\n[PENTING] Direktori kerja absolut Anda saat ini adalah: {os.path.abspath(DIREKTORI_BATASAN_AI)}. Semua path relatif harus dari direktori ini."
+
 
         self.all_tool_definitions = glm.Tool(
             function_declarations=(
@@ -50,7 +53,7 @@ class Agent:
     def _load_system_instruction_from_files(self):
         all_instructions = []
         try:
-            prompt_files = sorted([f for f in os.listdir(PROMPT_DIRECTORY) if f.endswith('.txt')])
+            prompt_files = sorted([f for f in os.listdir(PROMPT_DIRECTORY) if f.endswith('.txt') and not f.startswith('tool_')])
             if not prompt_files:
                 log_error(f"Tidak ada file instruksi (.txt) ditemukan di direktori: {PROMPT_DIRECTORY}.")
                 return "Anda adalah AI yang cerdas dan mampu berkomunikasi serta menggunakan tool."
@@ -139,7 +142,7 @@ class Agent:
         if not self.chat.history: return False
         for message in reversed(self.chat.history):
             if message.role == 'user':
-                return False
+                return False # Stop searching at the last user message boundary
             if message.role == 'model':
                 for part in message.parts:
                     if part.function_call and part.function_call.name == signal_name:
@@ -149,50 +152,15 @@ class Agent:
     def run_task(self, user_task):
         log_system_message(f"AI memproses permintaan Anda: '{user_task}'")
 
-        log_system_message(f"--- Memulai Tahap Penilaian & Perencanaan ---")
-        planning_prompt = (
-            f"Pengguna telah memberikan tugas: '{user_task}'.\n\n"
-            "Analisis permintaan ini. Apakah pengguna memberikan file instruksi (misalnya, 'baca tugas.txt')?\n"
-            "1. Jika YA, dan file itu ada, gunakan kontennya sebagai rencana Anda. Anda TIDAK perlu membuat `todo.md` baru. Cukup mulai eksekusi berdasarkan file itu.\n"
-            "2. Jika TIDAK, atau jika tugasnya sederhana, buat rencana langkah-demi-langkah di `todo.md` menggunakan `write_file`.\n"
-            "3. Jika Anda kurang informasi untuk membuat rencana, gunakan `web_search` atau `ask_user_for_input` DULU.\n"
-            "   - Setelah rencana siap (baik dari file atau dibuat baru), Anda HARUS memanggil `signal_task_in_progress()` untuk memulai eksekusi. Ini adalah sinyal untuk saya agar melanjutkan."
-        )
-        initial_response = self._get_llm_response(planning_prompt)
-        
-        while not initial_response and globals().get('USER_INPUT_REQUIRED'):
-            user_input = input(f"{Colors.BOLD}{Colors.GREEN}Input Anda: {Colors.RESET}").strip()
-            log_user_input(user_input)
-            user_feedback_part = glm.Part(
-                function_response=glm.FunctionResponse(
-                    name="ask_user_for_input",
-                    response={"result": json.dumps({"success": True, "data": f"Pengguna merespons: {user_input}"})}
-                )
-            )
-            globals()['USER_INPUT_REQUIRED'] = False
-            initial_response = self._get_llm_response(user_feedback_part)
-            if not initial_response and not globals().get('USER_INPUT_REQUIRED'):
-                 log_error("Gagal mendapatkan respons dari AI setelah input pengguna. Sesi dihentikan.")
-                 return
-
-        if not self._was_signal_tool_called("signal_task_in_progress"):
-            if initial_response and initial_response.candidates and initial_response.candidates[0].content:
-                final_text = " ".join([p.text for p in initial_response.candidates[0].content.parts if p.text]).strip()
-                if final_text: log_agent_response(final_text)
-            log_system_message("[Han Agent: Sesi berakhir setelah tahap perencanaan (tidak ada sinyal lanjut).]")
-            return
-        
-        log_success("--- Perencanaan Selesai. Memulai Eksekusi ---")
-
-
         iteration_count = 0
         MAX_ITERATIONS = 50
         
         next_prompt = (
-            "Rencana telah dibuat. Sekarang eksekusi rencana tersebut langkah demi langkah. "
-            "Baca `todo.md`, lakukan langkah berikutnya, dan teruskan sampai selesai. "
-            "Hanya panggil `signal_task_complete` jika SEMUA tugas sudah selesai. "
-            "Hanya panggil `ask_user_for_input` jika Anda benar-benar membutuhkan bantuan."
+            f"Tugas utama dari pengguna adalah: '{user_task}'.\n\n"
+            "Mulai dengan membuat rencana langkah-demi-langkah dalam file `todo.md` menggunakan `write_file`, kecuali jika tugasnya sangat sederhana sehingga bisa langsung dieksekusi. "
+            "Jika Anda kurang informasi, gunakan `web_search` atau `ask_user_for_input` terlebih dahulu. "
+            "Setelah rencana siap, mulailah mengeksekusi langkah pertama dari rencana tersebut. "
+            "Pikirkan langkah demi langkah."
         )
 
         while iteration_count < MAX_ITERATIONS:
@@ -204,42 +172,43 @@ class Agent:
             if globals().get('USER_INPUT_REQUIRED'):
                 user_input = input(f"{Colors.BOLD}{Colors.GREEN}Input Anda: {Colors.RESET}").strip()
                 log_user_input(user_input)
+                globals()['USER_INPUT_REQUIRED'] = False
+                
                 user_feedback_part = glm.Part(
                     function_response=glm.FunctionResponse(
                         name="ask_user_for_input",
                         response={"result": json.dumps({"success": True, "data": f"Pengguna merespons: {user_input}"})}
                     )
                 )
-                globals()['USER_INPUT_REQUIRED'] = False
                 
                 next_prompt = user_feedback_part 
                 continue
 
             if self._was_signal_tool_called("signal_task_complete"):
                 log_success("--- TUGAS SELESAI DIKERJAKAN (menurut sinyal AI) ---")
+                final_summary = "AI tidak memberikan ringkasan."
                 try:
-                    final_summary = "AI tidak memberikan ringkasan."
                     for msg in reversed(self.chat.history):
-                        if msg.role == 'user': break
                         if msg.role == 'model':
                             for part in msg.parts:
                                 if part.function_call and part.function_call.name == "signal_task_complete":
                                     final_summary = part.function_call.args.get('final_summary', 'Tidak ada ringkasan yang diberikan.')
                                     break
                             if final_summary != "AI tidak memberikan ringkasan.": break
-                    log_agent_response(f"Ringkasan Akhir dari AI:\n{final_summary}")
-                except (IndexError, KeyError):
-                    log_agent_response("AI menyelesaikan tugas tanpa memberikan ringkasan akhir.")
+                except (IndexError, KeyError) as e:
+                    log_debug(f"Tidak dapat mengekstrak ringkasan akhir: {e}")
+                
+                log_agent_response(f"Ringkasan Akhir dari AI:\n{final_summary}")
                 break 
 
             if not response:
                 log_error("Terjadi error atau prompt diblokir. Sesi eksekusi dihentikan.")
                 break
-.
+
             tool_output_summary = ""
             if self.chat.history and self.chat.history[-1].role == 'tool':
                 tool_responses = self.chat.history[-1].parts
-                summaries = [f"- Tool '{p.function_response.name}' dipanggil. Hasil: {json.dumps(p.function_response.response)}" for p in tool_responses]
+                summaries = [f"- Tool '{p.function_response.name}' dipanggil. Hasil: {json.dumps(p.function_response.response)[:200]}..." for p in tool_responses]
                 tool_output_summary = "\n".join(summaries)
             
             final_text = ""
@@ -247,11 +216,13 @@ class Agent:
                  final_text = " ".join([p.text for p in response.candidates[0].content.parts if p.text]).strip()
 
             next_prompt = (
-                "Lanjutkan ke langkah berikutnya berdasarkan rencana Anda. "
+                f"Ingat, tugas utama Anda adalah: '{user_task}'.\n\n"
+                "Anda berada di lingkungan `han_workspace`.\n"
+                "Lanjutkan ke langkah berikutnya berdasarkan rencana Anda di `todo.md` (atau buat jika belum ada). "
                 "Berikut adalah ringkasan dari apa yang baru saja Anda lakukan:\n"
-                f"{tool_output_summary if tool_output_summary else '(Tidak ada tool yang dipanggil di giliran terakhir.)'}\n"
+                f"```text\n{tool_output_summary if tool_output_summary else '(Tidak ada tool yang dipanggil di giliran terakhir.)'}\n```\n"
                 f"{'AI juga mengatakan: ' + final_text if final_text else ''}\n\n"
-                "Apa tindakan Anda selanjutnya?"
+                "Apa tindakan logis Anda selanjutnya? Selalu periksa kembali `todo.md` Anda."
             )
         else:
             log_error(f"Mencapai batas iterasi ({MAX_ITERATIONS}). Tugas dihentikan secara paksa.")

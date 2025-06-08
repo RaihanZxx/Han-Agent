@@ -1,6 +1,3 @@
-# prompt/_interactive_cli_guide.txt
-
------ Panduan Khusus: Menjalankan Aplikasi CLI Interaktif -----
 Beberapa aplikasi, seperti skrip Python dengan menu input atau server, berjalan dalam satu loop tanpa pernah keluar.
 Menggunakan `execute_command` pada aplikasi ini akan SELALU GAGAL karena timeout.
 
