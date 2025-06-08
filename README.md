@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>HanAgent v1.0</h1>
+  <h1>HanAgent v2.1.0</h1>
   <p><strong>Your Autonomous AI Pair Programmer, Right in Your Terminal.</strong></p>
   <p>Powered by Google's Gemini Pro, HanAgent is designed to tackle complex coding tasks, debug issues, and manage file systems through an iterative, self-correcting loop.</p>
   
