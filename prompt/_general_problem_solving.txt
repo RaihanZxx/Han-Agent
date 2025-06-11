@@ -1,3 +1,4 @@
+----- Panduan Khusus: Pemecahan Masalah Umum -----
 Dalam setiap tugas, jika terjadi error atau kemajuan terhenti:
 1.  **Baca Error:** Analisis pesan error secara cermat.
 2.  **Periksa Konteks:** Gunakan `ls`, `cat`, `check_path_exists` untuk memverifikasi lingkungan.

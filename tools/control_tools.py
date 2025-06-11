@@ -7,12 +7,6 @@ from utils.colors import Colors
 USER_INPUT_REQUIRED = False
 USER_RESPONSE = None
 
-def signal_task_in_progress():
-    return json.dumps({
-        "success": True,
-        "data": "Sinyal untuk melanjutkan ke iterasi berikutnya telah diterima."
-    })
-
 def signal_task_complete(final_summary):
     return json.dumps({
         "success": True,
@@ -35,11 +29,6 @@ def ask_user_for_input(question: str):
 control_tool_definitions = glm.Tool(
     function_declarations=[
         glm.FunctionDeclaration(
-            name="signal_task_in_progress",
-            description="Panggil ini sebagai tindakan TERAKHIR dalam satu putaran untuk menandakan Anda telah membuat kemajuan dan siap untuk melanjutkan ke langkah berikutnya.",
-            parameters=glm.Schema(type=Type.OBJECT, properties={})
-        ),
-        glm.FunctionDeclaration(
             name="signal_task_complete",
             description="Panggil ini HANYA SEKALI di akhir ketika SEMUA tugas telah berhasil diselesaikan.",
             parameters=glm.Schema(
@@ -61,7 +50,6 @@ control_tool_definitions = glm.Tool(
 )
 
 control_functions = {
-    "signal_task_in_progress": signal_task_in_progress,
     "signal_task_complete": signal_task_complete,
     "ask_user_for_input": ask_user_for_input,
 }

@@ -17,7 +17,7 @@ def main():
 
     log_system_message(f"\n")
     log_system_message(f"{Colors.BLUE}{'-' * 50}{Colors.RESET}")
-    log_system_message(f"{Colors.BOLD}{Colors.BLUE}Selamat datang di HanAgent v2.1.0!{Colors.RESET}")
+    log_system_message(f"{Colors.BOLD}{Colors.BLUE}Selamat datang di HanAgent v2.2.0!{Colors.RESET}")
     log_system_message(f"{Colors.BLUE}HanAgent ini didesain untuk secara iteratif membangun, menguji, dan melakukan debugging kode.{Colors.RESET}")
     log_system_message(f"{Colors.BLUE}Credit: HanSoBored.{Colors.RESET}")
     log_system_message(f"{Colors.BLUE}Ketik '{Colors.BOLD}exit{Colors.RESET}{Colors.BLUE}' untuk keluar.{Colors.RESET}")
