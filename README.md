@@ -32,7 +32,7 @@
 
 <img src="https://github.com/RaihanZxx/Han-Agent/blob/main/previews%2Fpreviews1.png" width="400">
 
-**Previews Build Apk:**
+**Created Module KernelSU:**
 
 <img src="https://github.com/RaihanZxx/Han-Agent/blob/main/previews%2Fpreviews2.png" width="400">
 
@@ -58,8 +58,8 @@ apt install python3 python3-pip python3-venv
 
 Buat dan aktifkan virtual environment (direkomendasikan)
 ```bash
-python3 -m venv /usr/local/share
-source usr/local/share/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 Install pip
