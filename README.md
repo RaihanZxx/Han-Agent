@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>HanAgent v2.2.0</h1>
+  <h1>HanAgent v2.1.0</h1>
   <p><strong>Your Autonomous AI Pair Programmer, Right in Your Terminal.</strong></p>
   <p>Powered by Google's Gemini Pro, HanAgent is designed to tackle complex coding tasks, debug issues, and manage file systems through an iterative, self-correcting loop.</p>
   
@@ -30,11 +30,11 @@
 # Below are some previews of Compound Interest in action:
 **Main Menu:**
 
-<img src="https://github.com/RaihanZxx/Han-Agent/blob/main/previews%2Fpreviews1.jpg" width="400">
+<img src="https://github.com/RaihanZxx/Han-Agent/blob/main/previews%2Fpreviews1.png" width="400">
 
 **Previews Build Apk:**
 
-<img src="https://github.com/RaihanZxx/Han-Agent/blob/main/previews%2Fpreviews2.jpg" width="400">
+<img src="https://github.com/RaihanZxx/Han-Agent/blob/main/previews%2Fpreviews2.png" width="400">
 
 ---
 

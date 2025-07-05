@@ -1,0 +1,271 @@
+# Panduan Final: Membuat Modul KernelSU dengan WebUI dan Backend Shell
+
+## 1. Prinsip Utama
+
+Tujuan dari panduan ini adalah untuk membuat modul KernelSU dengan WebUI yang fungsional. Arsitektur yang BENAR dan TERBUKTI adalah sebagai berikut:
+
+- **Frontend**: Sebuah WebUI yang dibuat dengan HTML, CSS, dan JavaScript, ditempatkan di dalam direktori `webroot`.
+- **Backend**: Serangkaian skrip shell (`.sh`) yang berisi semua logika fungsional. Skrip ini ditempatkan di direktori utama modul.
+- **Jembatan**: File `webroot/script.js` bertindak sebagai jembatan. Ia menggunakan API `ksu.exec` yang disediakan oleh aplikasi KernelSU untuk memanggil dan mengeksekusi skrip-skrip shell dari backend.
+
+## 2. Struktur Direktori yang Benar
+
+Berikut adalah struktur direktori yang harus selalu dibuat:
+
+```
+MyKernelSUMODULE/
+├── module.prop
+├── post-fs-data.sh
+├── service.sh
+├── uninstall.sh
+├── nama_skrip_anda.sh  # <-- Logika backend ada di sini
+└── webroot/
+    ├── index.html        # <-- Antarmuka pengguna
+    ├── script.js         # <-- Jembatan ke backend
+    └── style.css         # <-- Styling
+```
+
+**Penting:** Nama folder modul (`MyKernelSUMODULE/` dalam contoh di atas) harus sama persis dengan nilai `id=` di `module.prop` Anda. Misalnya, jika `id=my-ksu-module`, maka nama folder modul Anda harus `my-ksu-module`.
+
+## 3. Konten File Boilerplate
+
+### a. `module.prop`
+
+```properties
+id=my-ksu-module
+name=My KernelSU Module
+version=v1.0
+versionCode=1
+author=author
+description=A functional KernelSU module.
+webui=true
+```
+*PENTING: `webui=true` wajib ada.*
+
+### b. `post-fs-data.sh`
+
+Skrip untuk persiapan saat boot. Terutama untuk memberikan izin eksekusi pada skrip backend Anda.
+
+```bash
+#!/system/bin/sh
+MODDIR=${0%/*}
+
+# Berikan izin eksekusi ke semua skrip .sh Anda
+chmod 755 $MODDIR/*.sh
+```
+
+### c. `webroot/index.html`
+
+Contoh antarmuka pengguna dengan sebuah tombol.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Module</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1 id="module-name">My KernelSU Module</h1>
+    <p>Klik tombol di bawah untuk menjalankan skrip backend.</p>
+    
+    <!-- Tombol ini memiliki atribut data-script yang menunjuk ke file .sh yang akan dijalankan -->
+    <button class="btn" data-script="nama_skrip_anda.sh">Jalankan Skrip Saya</button>
+    
+    <pre id="output">Output dari skrip akan muncul di sini...</pre>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+```
+
+### d. `webroot/script.js` (Implementasi yang Benar)
+
+Ini adalah bagian paling krusial. Ia menangani klik tombol dan memanggil skrip shell.
+
+```javascript
+// Pastikan DOM sudah dimuat sepenuhnya
+document.addEventListener("DOMContentLoaded", () => {
+
+  // Fungsi untuk menjalankan perintah shell melalui API KernelSU
+  function runShell(command) {
+    // Periksa apakah API ksu tersedia
+    if (typeof ksu !== 'object' || typeof ksu.exec !== 'function') {
+      return Promise.reject("KernelSU JavaScript API tidak tersedia.");
+    }
+    
+    // Menggunakan API ksu.exec untuk menjalankan perintah dengan callback
+    const cb = `cb_${Date.now()}`;
+    return new Promise((resolve, reject) => {
+      window[cb] = (code, stdout, stderr) => {
+        delete window[cb];
+        if (code === 0) {
+          resolve({ stdout, stderr }); // Resolve dengan objek yang berisi stdout dan stderr
+        } else {
+          reject(stderr || "Shell error");
+        }
+      };
+      ksu.exec(command, "{}", cb);
+    });
+  }
+
+  const outputElement = document.getElementById('output');
+
+  // Tambahkan event listener ke semua elemen dengan class 'btn'
+  document.querySelectorAll('.btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const scriptToRun = button.dataset.script;
+      if (!scriptToRun) {
+        outputElement.textContent = 'Error: Tidak ada atribut data-script pada tombol.';
+        return;
+      }
+
+      outputElement.textContent = `Menjalankan ${scriptToRun}...`;
+
+      try {
+        // Membangun path lengkap ke skrip dan menjalankannya dengan sh
+        const command = `sh ${MODDIR}/${scriptToRun}`;
+        const { stdout, stderr } = await runShell(command);
+
+        if (stderr) {
+          console.error(`Error executing ${scriptToRun}:`, stderr);
+          outputElement.textContent = `Error:\n${stderr}`;
+        } else {
+          outputElement.textContent = `Sukses:\n${stdout}`;
+        }
+      } catch (error) {
+        console.error('Gagal menjalankan perintah shell:', error);
+        outputElement.textContent = `Gagal total: ${error}`;
+      }
+    });
+  });
+
+  // Contoh: Mengambil nama modul dari module.prop untuk ditampilkan di judul
+  async function getModuleName() {
+    try {
+      const { stdout } = await runShell(`grep '^name=' ${MODDIR}/module.prop | cut -d= -f2`);
+      const moduleName = stdout.trim();
+      if (moduleName) {
+        document.getElementById("module-name").textContent = moduleName;
+        document.title = moduleName;
+      }
+    } catch (error) {
+      console.error("Gagal mendapatkan nama modul:", error);
+    }
+  }
+
+  getModuleName();
+});
+```
+
+### e. `nama_skrip_anda.sh` (Contoh Backend)
+
+Ini adalah logika backend Anda. Apa pun yang Anda `echo` di sini akan ditampilkan di WebUI.
+
+```bash
+#!/system/bin/sh
+
+# Skrip ini dijalankan ketika tombol di WebUI diklik.
+
+# Contoh: Menampilkan tanggal dan beberapa informasi sistem
+echo "Halo dari backend shell!"
+echo "Tanggal saat ini adalah: $(date)"
+echo ""
+echo "Informasi Kernel:"
+uname -a
+
+# Anda bisa melakukan operasi file, menjalankan perintah lain, dll.
+# Contoh: ls -l $MODDIR
+```
+
+## 4. Prosedur Implementasi untuk Agen
+
+1.  **Buat Struktur Direktori**: Gunakan `create_directory` untuk membuat struktur folder seperti di Bagian 2.
+2.  **Tulis File Boilerplate**: Gunakan `write_file` untuk membuat semua file yang dijelaskan di Bagian 3.
+3.  **Implementasikan Logika Kustom**: Modifikasi atau buat file `.sh` baru untuk mengimplementasikan fungsionalitas yang diminta pengguna. Tambahkan tombol yang sesuai di `index.html` dengan atribut `data-script` yang benar.
+4.  **Zip Modul**: Gunakan `run_shell_command` untuk membuat arsip zip dari direktori modul. **Penting: Pastikan isi direktori modul (bukan folder modul itu sendiri) yang dikompres ke dalam file zip. Ini biasanya dilakukan dengan mengubah direktori kerja ke dalam folder modul sebelum menjalankan perintah `zip -r .`**
+5.  **Sediakan untuk Pengguna**: Beri tahu pengguna bahwa file zip siap untuk diinstal.
+
+## 5. Penanganan Variabel `MODDIR` dan `ReferenceError`
+
+Variabel `MODDIR` sangat penting dalam pengembangan modul KernelSU dengan WebUI. Ini adalah variabel global yang seharusnya disediakan oleh lingkungan WebUI KernelSU saat `index.html` dan `script.js` dimuat. `MODDIR` berisi jalur absolut ke direktori instalasi modul Anda (misalnya, `/data/adb/modules/nama_modul_anda`).
+
+**Penyebab `ReferenceError: MODDIR is not defined`:**
+
+Kesalahan ini terjadi ketika `script.js` mencoba mengakses `MODDIR` tetapi variabel tersebut belum didefinisikan. Ini biasanya terjadi jika:
+
+1.  **Anda membuka `index.html` langsung di browser web biasa (misalnya Chrome, Firefox) di komputer Anda.** Lingkungan browser tidak menyediakan variabel global `MODDIR` yang spesifik untuk KernelSU.
+2.  **Ada masalah dengan lingkungan KernelSU WebUI itu sendiri** yang gagal menginjeksi `MODDIR` ke dalam konteks JavaScript. (Ini jarang terjadi jika instalasi KernelSU Anda benar).
+
+**Solusi dan Perbedaan "Backend" (dalam konteks `MODDIR`):**
+
+*   **Solusi yang Benar (Lingkungan Produksi):** Pastikan modul Anda diinstal dengan benar di perangkat Android dengan KernelSU, dan akses WebUI melalui aplikasi KernelSU yang sesuai. Di lingkungan ini, `MODDIR` akan secara otomatis didefinisikan oleh KernelSU.
+
+*   **Solusi untuk Debugging/Pengembangan (Hardcoding):** Untuk tujuan debugging atau jika Anda ingin menguji bagian frontend secara terpisah tanpa lingkungan KernelSU penuh, Anda dapat secara eksplisit mendefinisikan `MODDIR` di awal `script.js` Anda:
+
+    ```javascript
+    const MODDIR = "/data/adb/modules/nama_modul_anda"; // Ganti dengan path modul Anda yang sebenarnya
+    // ... sisa kode script.js Anda
+    ```
+    Ini adalah pendekatan yang digunakan oleh modul "h" yang Anda sebutkan, di mana `MODDIR` didefinisikan secara eksplisit sebagai `const MODDIR = "/data/adb/modules/Integrity-Box";`. Ini memastikan bahwa JavaScript selalu memiliki nilai untuk `MODDIR`, terlepas dari apakah lingkungan KernelSU menyediakan-nya sebagai variabel global.
+
+*   **Perbedaan "Backend" (Kontekstual):** Ketika Anda mengatakan "backend" dalam konteks `MODDIR`, Anda sebenarnya merujuk pada **lingkungan runtime KernelSU WebUI** yang bertanggung jawab untuk menyediakan variabel global seperti `MODDIR` ke frontend JavaScript. Jika lingkungan ini tidak menyediakan `MODDIR`, maka frontend tidak dapat berkomunikasi dengan "backend" (skrip shell) secara benar karena tidak tahu di mana skrip tersebut berada. Modul "h" mengatasi ini dengan mendefinisikan `MODDIR` secara eksplisit di frontend-nya, sehingga lebih tangguh terhadap lingkungan yang tidak menyediakan `MODDIR` secara otomatis.
+
+## 6. Penanganan Output `ksu.exec` (stdout dan stderr)
+
+Ketika menjalankan skrip shell melalui `ksu.exec`, penting untuk menangani output standar (`stdout`) dan kesalahan standar (`stderr`) dengan benar. Jika tidak ditangani dengan tepat, Anda mungkin melihat pesan seperti "Sukses: undefined" meskipun skrip shell berhasil dieksekusi.
+
+**Penyebab "Sukses: undefined":**
+
+Kesalahan ini terjadi karena `ksu.exec` adalah fungsi asinkron yang mengembalikan hasil melalui mekanisme callback. Jika Anda tidak secara eksplisit mengambil nilai `stdout` dari callback dan menggunakannya, variabel yang Anda coba tampilkan akan tetap `undefined`.
+
+**Implementasi `runShell` yang Benar untuk Mengambil Output:**
+
+Fungsi `runShell` harus mengembalikan Promise yang me-resolve dengan objek yang berisi `stdout` dan `stderr` dari eksekusi skrip. Ini memungkinkan Anda untuk mengakses output dengan mudah menggunakan `await`.
+
+Berikut adalah contoh implementasi `runShell` yang telah diperbaiki:
+
+```javascript
+  function runShell(command) {
+    if (typeof ksu !== 'object' || typeof ksu.exec !== 'function') {
+      return Promise.reject("KernelSU JavaScript API tidak tersedia.");
+    }
+    
+    const cb = `cb_${Date.now()}`;
+    return new Promise((resolve, reject) => {
+      window[cb] = (code, stdout, stderr) => {
+        delete window[cb];
+        if (code === 0) {
+          resolve({ stdout, stderr }); // Resolve dengan objek yang berisi stdout dan stderr
+        } else {
+          reject(stderr || "Shell error");
+        }
+      };
+      ksu.exec(command, "{}", cb);
+    });
+  }
+```
+
+**Cara Menggunakan `runShell` yang Diperbaiki:**
+
+Setelah `runShell` diperbaiki, Anda dapat mengakses `stdout` dan `stderr` dari hasil Promise:
+
+```javascript
+      try {
+        const { stdout, stderr } = await runShell(command);
+
+        if (stderr) {
+          console.error(`Error executing ${scriptToRun}:`, stderr);
+          outputElement.textContent = `Error:\n${stderr}`;
+        } else {
+          outputElement.textContent = `Sukses:\n${stdout}`;
+        }
+      } catch (error) {
+        console.error('Gagal menjalankan perintah shell:', error);
+        outputElement.textContent = `Gagal total: ${error}`;
+      }
+```
+
+Dengan perubahan ini, output dari skrip shell Anda akan ditampilkan dengan benar di WebUI.

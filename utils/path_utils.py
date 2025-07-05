@@ -4,15 +4,19 @@ from config import DIREKTORI_BATASAN_AI
 from utils.colors import Colors
 from logging_handler import log_system_message, log_error, log_success
 
+
 def sanitize_path(filepath):
     abs_base_path = os.path.abspath(DIREKTORI_BATASAN_AI)
 
     full_path = os.path.abspath(os.path.join(abs_base_path, filepath))
 
     if os.path.commonpath([abs_base_path, full_path]) != abs_base_path:
-        raise ValueError(f"{Colors.RED}Akses ditolak: Mencoba mengakses jalur di luar workspace AI: {filepath}{Colors.RESET}")
+        raise ValueError(
+            f"{Colors.RED}Akses ditolak: Mencoba mengakses jalur di luar workspace AI: {filepath}{Colors.RESET}"
+        )
 
     return full_path
+
 
 def create_workspace_if_not_exists():
     if not os.path.exists(DIREKTORI_BATASAN_AI):
@@ -20,6 +24,7 @@ def create_workspace_if_not_exists():
         log_success(f"Direktori kerja AI '{DIREKTORI_BATASAN_AI}' telah dibuat.")
     else:
         log_system_message(f"Menggunakan direktori kerja AI: '{DIREKTORI_BATASAN_AI}'")
+
 
 def clean_workspace():
     log_system_message(f"Membersihkan direktori kerja AI '{DIREKTORI_BATASAN_AI}'...")

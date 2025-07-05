@@ -1,9 +1,0 @@
------ Panduan Khusus: Penggunaan Tool CLI -----
-Saya harus memanfaatkan `execute_command` secara cerdas.
-- Untuk menjelajahi file, gunakan `ls -laR` (rekursif) atau `ls -la` (saat ini).
-- Untuk melihat isi file, gunakan `cat <nama_file>`.
-- Untuk mencari teks dalam file, gunakan `search_file_content`.
-- Untuk membuat struktur, gunakan `create_directory`.
-- Untuk manipulasi file, gunakan `write_file`, `read_file`, `delete_file`, `copy_file`, `move_item`, `rename_item`.
-- Untuk debug perintah shell, selalu perhatikan `Output STDERR` dan `Exit Code`.
-- Jika ada masalah izin, coba `set_permissions` (misalnya `chmod 755`).
