@@ -27,7 +27,7 @@
 
 ## 🖼️ Previews
 
-# Below are some previews of Compound Interest in action:
+# Below are some previews of Han-Agent in action:
 **Main Menu:**
 
 <img src="https://github.com/RaihanZxx/Han-Agent/blob/main/previews%2Fpreviews1.png" width="400">
